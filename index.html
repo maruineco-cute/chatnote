@@ -225,10 +225,10 @@ dialog{color-scheme:dark;color:var(--text);background:var(--surface);border:1px 
               <button type="button" class="attach composer-glyph icon-btn" data-action="attach" data-icon="chevron" aria-label="画像・スタンプを添付"></button>
             </div>
             <div class="compose-field">
-              <textarea id="message-input" aria-label="メッセージ" enterkeyhint="send" rows="1"></textarea>
+              <textarea id="message-input" aria-label="メッセージ" enterkeyhint="enter" rows="1"></textarea>
               <button type="button" class="composer-glyph icon-btn" data-action="stickers" data-icon="smile" aria-label="スタンプ一覧"></button>
             </div>
-            <button type="submit" id="send" class="send composer-glyph icon-btn" aria-label="送信" data-icon="send"></button>
+            <button type="button" id="send" class="send composer-glyph icon-btn" aria-label="送信" data-icon="send"></button>
           </div>
         </form>
       </section>
@@ -507,7 +507,7 @@ function drawSheet(keep=false){const pos=body.scrollTop;let html='';
  case 'help':html=`<div class="editor-stack">
   <ol class="quick-help">
    <li><b>作品と登場人物を用意</b><p>上の「作品」で新規作成・切り替え。名前やアイコンは「チャットメニュー」→「参加者管理」で設定します。</p></li>
-   <li><b>発言者を選んで送信</b><p>トーク下の「発言者」で人と表情を選び、「選択を確定」。青が左側、琥珀色が右側です。入力欄の顔マークでスタンプ、左の添付ボタンで画像を選べます。元の投稿をタップして「引用して返信」もできます。</p></li>
+   <li><b>発言者を選んで送信</b><p>トーク下の「発言者」で人と表情を選び、「選択を確定」。青が左側、琥珀色が右側です。キーボードの改行では送信せず、送信ボタンで投稿します。入力欄の顔マークでスタンプ、左の添付ボタンで画像を選べます。元の投稿をタップして「引用して返信」もできます。</p></li>
    <li><b>書き足す・直す</b><p>「地の文」でセリフ以外の文章を追加。投稿をタップすると修正できます。「編集」で並べ替え・元に戻す・送信取り消し通知の追加ができます。</p></li>
    <li><b>画像にして保存</b><p>上の「画像保存」で、画面どおりか会話全体などを選び、PNG／JPGで保存。スマホ枠も付けられます。</p></li>
   </ol>
@@ -824,10 +824,9 @@ body.addEventListener('compositionend',e=>{if(e.target.form?.dataset.form===view
 chat.addEventListener('click',()=>{if(replay?.mode==='manual')showReplayNext(replay);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b&&!b.disabled)onAction(b);});
 body.addEventListener('submit',e=>{e.preventDefault();commit();});
-$('#composer').addEventListener('submit',e=>{e.preventDefault();send();});
+$('#composer').addEventListener('submit',e=>e.preventDefault());
+$('#send').addEventListener('click',send);
 input.addEventListener('input',()=>{resizeInput();updateSend();});
-let composing=false,lastComposition=0;input.addEventListener('compositionstart',()=>{composing=true;});input.addEventListener('compositionend',()=>{composing=false;lastComposition=Date.now();});
-input.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.shiftKey||e.isComposing||composing||e.keyCode===229)return;if(Date.now()-lastComposition<35){e.preventDefault();return;}e.preventDefault();send();});
 list.addEventListener('contextmenu',e=>{const b=e.target.closest('[data-action="message"]');if(b){e.preventDefault();if(!dialog.open)onAction(b);}});
 let hold;list.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-action="message"]');if(!b||e.pointerType==='mouse')return;const x=e.clientX,y=e.clientY;hold={x,y,t:setTimeout(()=>{hold=null;if(!dialog.open)onAction(b);},510)};},{passive:true});
 function stopHold(){if(hold){clearTimeout(hold.t);hold=null;}}
@@ -1178,5 +1177,5 @@ body.addEventListener('change',async e=>{
 const initialSignature=JSON.stringify(state);paintIcons();render(true);viewport();initStorage();
 
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5d8d076bfdd19d8',t:'MTc5NTE5MTk2NQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5d8d076bfdd19d8',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5d8e38c6e8a35b1',t:'MTc5NTE5Mjc0Ng=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5d8e38c6e8a35b1',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
