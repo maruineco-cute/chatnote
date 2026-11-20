@@ -152,6 +152,20 @@ dialog{color-scheme:dark;color:var(--text);background:var(--surface);border:1px 
 .chat-replaying .messages button{pointer-events:none}
 @media(max-width:800px){.replay-tools button{font-size:11px;padding-inline:8px}}
 
+.sheet-body .auto-edit-status[data-error="true"]{color:#ffb6c4}
+
+/* Keep participant color settings compact without shrinking the text-entry fields. */
+.sheet-title-row{display:flex;align-items:center;gap:9px}
+.participant-header-delete{min-height:44px;padding:0 10px;font-size:12px;white-space:nowrap;flex:none}
+.sheet-body form[data-form="participant"]{gap:8px}
+.sheet-body [data-form="participant"] label.toggle{min-height:34px;font-size:12px}
+.sheet-body [data-form="participant"] .participant-colors label{font-size:12px;gap:3px}
+.sheet-body [data-form="participant"] .participant-colors input[type="color"]{min-height:34px;height:34px;padding:3px 5px}
+.sheet-body [data-form="participant"] .presets{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;max-width:374px}
+.sheet-body [data-form="participant"] .presets button{width:100%;height:36px}
+.sheet-body [data-form="participant"] .presets button::before{width:18px;height:18px}
+.sheet-body [data-form="participant"] .error:empty{display:none}
+
 </style>
 </head>
 <body>
@@ -184,7 +198,6 @@ dialog{color-scheme:dark;color:var(--text);background:var(--surface);border:1px 
           <h2>編集ツール</h2>
           <button data-action="participants" class="tool"><span class="tool-icon violet" data-icon="users"></span><span><b>参加者管理</b><small>名前・アイコン・吹き出し</small></span><span class="chev" data-icon="chevron"></span></button>
           <button data-action="settings" class="tool"><span class="tool-icon pink" data-icon="palette"></span><span><b>デザイン設定</b><small>背景・文字・表示オプション</small></span><span class="chev" data-icon="chevron"></span></button>
-          <button data-action="date-add" class="tool"><span class="tool-icon cyan" data-icon="calendar"></span><span><b>日付を追加</b><small>会話に日付の区切りを挿入</small></span><span class="chev" data-icon="chevron"></span></button>
           <button data-action="story-add" class="tool"><span class="tool-icon violet" data-icon="book"></span><span><b>地の文</b><small>地の文・斜体・センタリングを追加</small></span><span class="chev" data-icon="chevron"></span></button>
         </section>
         <section class="rail-card theme-card"><h2>チャットテーマ</h2><div id="rail-themes"></div></section>
@@ -233,7 +246,7 @@ dialog{color-scheme:dark;color:var(--text);background:var(--surface);border:1px 
     <footer class="footer"><span><span data-icon="shield"></span><span>会話と画像はこの端末内でのみ処理されます</span></span><span class="footer-brand">チャットノート</span></footer>
   </main>
 </div>
-<dialog id="sheet" aria-labelledby="sheet-title"><div class="sheet-grip"></div><header class="sheet-head"><div><div class="eyebrow"><span></span> チャットノート</div><h2 id="sheet-title" tabindex="-1"></h2></div><button class="icon-btn close-sheet" data-action="close" data-icon="close" aria-label="閉じる"></button></header><div id="sheet-body" class="sheet-body"></div></dialog>
+<dialog id="sheet" aria-labelledby="sheet-title"><div class="sheet-grip"></div><header class="sheet-head"><div><div class="eyebrow"><span></span> チャットノート</div><div class="sheet-title-row"><h2 id="sheet-title" tabindex="-1"></h2><button type="button" class="danger participant-header-delete" id="participant-header-delete" data-action="participant-delete" aria-label="参加者を削除" hidden>削除</button></div></div><button class="icon-btn close-sheet" data-action="close" data-icon="close" aria-label="閉じる"></button></header><div id="sheet-body" class="sheet-body"></div></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <input type="file" id="attachment-file" accept="image/png,image/jpeg,image/webp" hidden>
 <script>
@@ -454,7 +467,7 @@ function storeSticker(a){const id='sticker-'+a.stickerId;state.assets[id]=a.src;
 function send(){const p=person(state.speaker), text=input.value.trim()?input.value:'';if(replay||pendingBusy||(!text&&!pending))return;if(!p){openSheet('speaker');return;}const a=pending,f=selectedFace(p);remember();state.items.push({id:nano(),type:'msg',pid:p.id,name:p.name,side:p.side,color:p.color,ink:p.ink,themeColors:p.themeColors,avatar:f?.asset||'',time:timeNow(),read:Math.max(0,state.people.length-1),text,asset:a?(a.stickerId?storeSticker(a):storeAsset(a.src)):'',width:230,style:a?.style||'auto',...(pendingQuote?{quote:pendingQuote}:{})});input.value='';resizeInput();pending=null;pendingQuote=null;chosenFace='';appendMessage();}
 function resizeInput(){input.style.height='44px';input.style.height=Math.min(115,Math.max(44,input.scrollHeight+2))+'px';}
 const titles={menu:'チャットメニュー',help:'かんたんな使い方',replay:'会話を再生',participants:'参加者管理',participant:'参加者の設定',speaker:'投稿者・表情',faces:'表情を選択',settings:'デザイン設定',date:'日付の区切り',story:'地の文',timeline:'小説・投稿編集',message:'メッセージ編集',attach:'画像を追加',confirm:'確認',export:'画像保存',starter:'新しい作品',workspaces:'作品の切り替え',stickers:'スタンプを選ぶ',notice:'送信取り消し通知',logs:'ログの保存・復元'};
-function openSheet(type,data=null){if(view==='export'&&type!=='export')clearExport();if(view==='logs'&&type!=='logs')clearLogs();view=type;ctx=data||{};$('#sheet-title').textContent=titles[type];body.scrollTop=0;$('#toast').hidden=true;drawSheet();if(!dialog.open)dialog.showModal();if(type==='timeline'&&ctx.focusId)focusTimeline(ctx.focusId);if(type==='export')makePreview();}
+function openSheet(type,data=null){if(view==='export'&&type!=='export')clearExport();if(view==='logs'&&type!=='logs')clearLogs();view=type;ctx=data||{};$('#sheet-title').textContent=titles[type];$('#participant-header-delete').hidden=type!=='participant'||ctx.isNew;body.scrollTop=0;$('#toast').hidden=true;drawSheet();if(!dialog.open)dialog.showModal();if(type==='timeline'&&ctx.focusId)focusTimeline(ctx.focusId);if(type==='export')makePreview();}
 function closeSheet(){if(dialog.open)dialog.close();}
 dialog.addEventListener('close',()=>{if(!dialog.open){clearExport();clearLogs();view='';ctx=null;}});
 dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeSheet();}});
@@ -464,6 +477,10 @@ const pick=(label,name,rows,current)=>`<label>${label}<select name="${name}">${r
 const check=(label,name,checked)=>`<label class="toggle">${label}<input type="checkbox" name="${name}" ${checked?'checked':''}></label>`;
 const btns=(buttons)=>`<div class="sheet-actions">${buttons}</div>`;
 const submit=(label='変更を反映')=>`<button class="primary" type="submit">${label}</button>`;
+const isAutoEdit=()=>!!ctx&&!ctx.isNew&&['message','story','date','notice','participant','settings'].includes(view);
+const editStatus=()=>ctx.autoProblem|| (ctx.autoRemembered?'変更を自動保存しました':'変更は自動で保存されます。');
+const editNote=()=>`<p class="notes auto-edit-status" data-auto-edit-status data-error="${!!ctx.autoProblem}" role="status">${esc(editStatus())}</p>`;
+const editActions=(remove='')=>editNote()+btns(remove+act('close','完了','primary'));
 const fileField=(mode,txt,id='')=>`<label class="secondary file-label">${txt}<input type="file" accept="image/png,image/jpeg,image/webp" data-upload="${mode}" data-id="${id}" aria-label="${txt}"></label>`;
 const previewAvatar=(id)=>ctx.uploads?.[id]?`<span class="avatar"><img src="${esc(ctx.uploads[id])}" alt=""></span>`:avatar(id);
 const row=(action,ico,label,desc='',cls='violet')=>act(action,`<span class="tool-icon ${cls}">${icon(ico)}</span><span class="row-copy">${label}${desc?`<small>${desc}</small>`:''}</span>${icon('chevron')}`,'panel-row');
@@ -482,7 +499,7 @@ function timelineItems(){
 }
 function drawSheet(keep=false){const pos=body.scrollTop;let html='';
  switch(view){
- case 'menu':html=`<div class="editor-stack">${row('help','bulb','かんたんな使い方','会話の作り方・編集・保存','cyan')}${row('replay','play','会話を再生','上から順に、1件ずつ表示')}<p class="menu-kicker">チャットテーマ</p>${themeButtons(state.prefs.theme)}<hr class="panel-sep">${row('participants','users','参加者管理','名前・表情アイコン・吹き出し')}${row('settings','palette','デザイン設定','背景・文字・表示オプション','pink')}${row('timeline','edit','投稿順・修正','会話や地の文を並べ替えて編集')}${row('story-add','book','地の文','地の文・斜体・センタリングを追加','violet')}${row('date-add','calendar','日付を追加','会話の末尾に区切りを入れる','cyan')}${row('logs','download','ログの保存・復元','編集用バックアップ・読み返し用TXT')}${row('workspaces','folder','作品の切り替え','複数の会話を端末内に保存')}${row('export','image','画像保存','プレビューで範囲を確認')}${btns(act('reset','作業データを初期化','danger'))}</div>`;break;
+ case 'menu':html=`<div class="editor-stack">${row('help','bulb','かんたんな使い方','会話の作り方・編集・保存','cyan')}${row('replay','play','会話を再生','上から順に、1件ずつ表示')}<p class="menu-kicker">チャットテーマ</p>${themeButtons(state.prefs.theme)}<hr class="panel-sep">${row('participants','users','参加者管理','名前・表情アイコン・吹き出し')}${row('settings','palette','デザイン設定','背景・文字・表示オプション','pink')}${row('timeline','edit','投稿順・修正','会話や地の文を並べ替えて編集')}${row('story-add','book','地の文','地の文・斜体・センタリングを追加','violet')}${row('logs','download','ログの保存・復元','編集用バックアップ・読み返し用TXT')}${row('workspaces','folder','作品の切り替え','複数の会話を端末内に保存')}${row('export','image','画像保存','プレビューで範囲を確認')}${btns(act('reset','作業データを初期化','danger'))}</div>`;break;
  case 'replay':{
   const ready=replayRows().length>0;
   html=`<form data-form="replay">${pick('再生方法・間隔','speed',Object.entries(replaySpeeds).map(([key,[label]])=>[key,label]),replaySpeed)}<div data-replay-auto ${replaySpeed==='manual'?'hidden':''}>${check('短い返事・スタンプは早め','quick',replayQuick)}<p class="notes">オンにすると、2文字以内の返事やスタンプだけの投稿は約0.3〜0.6秒で表示されます。</p></div><p data-replay-manual ${replaySpeed==='manual'?'':'hidden'}>トーク画面をタップするか、上の「次へ」を押すと1件進みます。</p><p>${ready?'投稿を上から順に1件ずつ表示します。再生しても、作品や下書きは変わりません。':'再生できる投稿がまだありません。'}</p>${btns(act('menu','メニューへ戻る')+(ready?submit('再生する'):''))}</form>`;break;
@@ -503,11 +520,11 @@ function drawSheet(keep=false){const pos=body.scrollTop;let html='';
  case 'logs':html=`<div class="editor-stack"><p>ブラウザの自動保存とは別に、ログをファイルとして手元に残せます。</p><div class="log-list">${logLink('json','バックアップを保存（JSON）','画像・参加者・設定ごと保存。あとから編集できます。')}${logLink('txt','テキストとして保存（TXT）','メッセージの読み返し用。画像ファイルは含みません。')}<label class="panel-row file-label"><span class="tool-icon cyan">${icon('back')}</span><span class="row-copy">バックアップを読み込む<small>このアプリで保存したJSONを別の作品として開きます。</small></span><input type="file" accept=".json,application/json" data-import-log aria-label="バックアップを読み込む"></label></div>${errorLine()}${btns(act('menu','メニューへ戻る'))}</div>`;break;
  case 'participants':html=`<div class="editor-stack"><p>参加者ごとに、見た目と表情アイコンを設定できます。</p>${act('participant-new',icon('plus')+' 参加者を追加','primary full')}<div class="panel-list">${state.people.map(p=>act('participant-edit',`${avatar(defaultFace(p)?.asset,p.name)}<span class="row-copy">${esc(p.name)}<small>${shortSide(p)} · 表情 ${p.faces.length}件</small></span><span class="swatch" style="background:${bubbleColor(p)}"></span>${icon('chevron')}`,'panel-row',`data-id="${p.id}"`)).join('')||'<p>参加者はまだいません。</p>'}</div></div>`;break;
  case 'participant':{
-  const p=ctx.draft;html=`<form data-form="participant"><div class="field-grid">${field('名前','name',p.name,'text','required maxlength="60" autocomplete="off"')}${pick('表示位置','side',[['left','左側'],['right','右側（自分側）']],p.side)}</div>${check('テーマの配色を使う','themeColors',p.themeColors)}<div class="field-grid">${field('吹き出しの色','color',p.color,'color')}${field('文字色','ink',p.ink,'color')}</div><div class="presets" aria-label="吹き出しの色プリセット">${presets.map(c=>act('preset','', '',`style="--preset:${c}" data-color="${c}" aria-label="${c}"`)).join('')}</div>
+  const p=ctx.draft;html=`<form data-form="participant"><div class="field-grid">${field('名前','name',p.name,'text','required maxlength="60" autocomplete="off"')}${pick('表示位置','side',[['left','左側'],['right','右側（自分側）']],p.side)}</div>${check('テーマの配色を使う','themeColors',p.themeColors)}<div class="field-grid participant-colors">${field('吹き出しの色','color',p.color,'color')}${field('文字色','ink',p.ink,'color')}</div><div class="presets" aria-label="吹き出しの色プリセット">${presets.map(c=>act('preset','', '',`style="--preset:${c}" data-color="${c}" aria-label="${c}"`)).join('')}</div>
   <p class="mini-text">背景とのコントラストが低いときは、読みやすい文字色に補正します。</p><hr class="panel-sep"><div class="row-title">表情アイコン <span>${p.faces.length} 件</span></div>
   ${pick('通常（投稿時に使うアイコン）','defaultFace',[['','アイコンなし'],...p.faces.filter(f=>f.asset).map(f=>[f.id,f.name||'名称未入力'])],p.defaultFace)}
   ${p.faces.map((f,i)=>`<div class="expression-card"><div class="expression-top">${previewAvatar(f.asset)}${field('表情名','faceName-'+i,f.name,'text','maxlength="40" placeholder="例：笑顔"')}${act('face-delete',icon('trash'),'danger icon-btn',`data-id="${f.id}" aria-label="この表情を削除"`)}</div><div class="upload-bar">${fileField('face',f.asset?'画像を変更':'画像を選択',f.id)}${[['cat','ねこ'],['dog','いぬ'],['rabbit','うさぎ']].map(([id,n])=>act('stock',avatar(id),'icon-btn',`data-id="${f.id}" data-stock="${id}" aria-label="${n}のアイコンを使う" title="${n}"`)).join('')}</div></div>`).join('')}
-  ${act('face-new',icon('plus')+' 表情アイコンを追加','secondary full')}${errorLine()}${btns((ctx.isNew?'':act('participant-delete','参加者を削除','danger'))+act('participants','キャンセル')+submit(ctx.isNew?'参加者を登録':'変更を保存'))}</form>`;break;
+  ${act('face-new',icon('plus')+' 表情アイコンを追加','secondary full')}${errorLine()}${ctx.isNew?btns(act('participants','キャンセル')+submit('参加者を登録')):editNote()}</form>`;break;
  }
  case 'speaker':case 'faces':{
   const p=person(ctx.pid??state.speaker), current=ctx.face??chosenFace;
@@ -517,20 +534,21 @@ function drawSheet(keep=false){const pos=body.scrollTop;let html='';
  case 'settings':{
   const p=ctx.draft, wall=ctx.wallSrc||source(p.wall);
   html=`<form data-form="settings">${field('グループ名','group',p.group,'text','required maxlength="80"')}<div class="row-title">チャットテーマ</div>${themeButtons(p.theme)}<details ${ctx.openBackground?'open':''}><summary>背景とヘッダー</summary><div class="detail-body"><div class="field-grid">${field('グループ背景色','header',p.header,'color')}${field('チャット背景色','bg',p.bg,'color')}</div>${wall?`<img class="group-preview" src="${esc(wall)}" alt="背景画像プレビュー">`:''}<div class="upload-bar">${fileField('wall',wall?'背景画像を変更':'背景画像を選択')}${wall?act('wall-remove','画像を削除','danger'):''}</div>${pick('背景画像の表示','fit',[['cover','画面いっぱい'],['contain','画像全体を表示'],['tile','タイル表示']],p.fit)}${check('ドット模様を表示','pattern',p.pattern)}</div></details>
-  <details><summary>文字と表示項目</summary><div class="detail-body">${field('文字サイズ（12〜24 px）','size',p.size,'number','min="12" max="24" step="1" required')}${pick('時刻の書式','clock',[['24','24時間表記'],['12','12時間表記']],p.clock)}${check('名前を吹き出しの上に表示','names',p.names)}${check('左側のアイコンを表示','leftIcons',p.leftIcons)}${check('右側のアイコンを表示','rightIcons',p.rightIcons)}${check('同じ投稿者・表情が連続したらアイコンを省略','compact',p.compact)}${check('時刻を表示','times',p.times)}${check('右側に既読を表示','read',p.read)}${check('日付を表示','dates',p.dates)}${check('小さな画像を引き伸ばさない','small',p.small)}</div></details>${errorLine()}${btns(act('close','キャンセル')+submit('設定を反映'))}</form>`;break;
+  <details data-settings-display ${ctx.openDisplay?'open':''}><summary>文字と表示項目</summary><div class="detail-body">${field('文字サイズ（12〜24 px）','size',p.size,'number','min="12" max="24" step="1" required')}${pick('時刻の書式','clock',[['24','24時間表記'],['12','12時間表記']],p.clock)}${check('名前を吹き出しの上に表示','names',p.names)}${check('左側のアイコンを表示','leftIcons',p.leftIcons)}${check('右側のアイコンを表示','rightIcons',p.rightIcons)}${check('同じ投稿者・表情が連続したらアイコンを省略','compact',p.compact)}${check('時刻を表示','times',p.times)}${check('右側に既読を表示','read',p.read)}${check('小さな画像を引き伸ばさない','small',p.small)}</div></details>
+  <details data-settings-date ${ctx.openDate?'open':''}><summary>日付</summary><div class="detail-body">${check('日付を表示','dates',p.dates)}${row('date-add','calendar','日付を追加','会話の末尾に区切りを入れる','cyan')}</div></details>${errorLine()}${editActions()}</form>`;break;
  }
  case 'timeline':html=`<div class="editor-stack"><div class="timeline-actions">${act('story-add',icon('plus')+' 地の文を追加','primary','data-from="timeline"')}${act('undo',icon('undo')+' 元に戻す','secondary',activeWork().undo.length?'':'disabled')}</div>${act('notice-add','送信取り消しを追加','secondary full')}<p>矢印で順番を変更できます。投稿の本文か鉛筆をタップすると、修正・削除できます。</p>${state.items.length?`<ol class="timeline-list" aria-label="投稿順">${timelineItems()}</ol>`:'<p>投稿はまだありません。</p>'}</div>`;break;
  case 'notice':{
   const m=ctx.draft,names=[...new Set([...state.people.map(p=>p.name),m.name].filter(Boolean))];
-  html=`<form data-form="notice">${pick('取り消した人','name',[['','名前を表示しない'],...names.map(n=>[n,n])],m.name)}${ctx.isNew?pick('挿入位置','anchor',storyAnchors(),ctx.anchor||''):''}<p>チャットの中央に通知を表示します。すでにある投稿は削除されません。</p>${btns((ctx.isNew?'':act('notice-delete','通知を削除','danger'))+act('close','キャンセル')+submit(ctx.isNew?'通知を追加':'変更を保存'))}</form>`;break;
+  html=`<form data-form="notice">${pick('取り消した人','name',[['','名前を表示しない'],...names.map(n=>[n,n])],m.name)}${ctx.isNew?pick('挿入位置','anchor',storyAnchors(),ctx.anchor||''):''}<p>チャットの中央に通知を表示します。すでにある投稿は削除されません。</p>${ctx.isNew?btns(act('close','キャンセル')+submit('通知を追加')):editActions(act('notice-delete','通知を削除','danger'))}</form>`;break;
  }
  case 'story':{
   const m=ctx.draft;
-  html=`<form data-form="story"><label>文章の表示スタイル<select name="style" aria-describedby="story-style-help">${[['narration','地の文（左揃え）'],['thought','斜体'],['scene','センタリング（中央揃え）']].map(([key,label])=>opt(key,label,m.style)).join('')}</select></label><ul class="story-style-help" id="story-style-help"><li><b>地の文</b>：左揃えで、動作や情景の説明に。</li><li><b>斜体</b>：入力した文章だけを斜めに表示します。名前や記号は付きません。</li><li><b>センタリング</b>：文章を中央に揃えます。両側の「—」はオン・オフできます。</li></ul><div data-story-scene ${m.style==='scene'?'':'hidden'}>${check('両側に「—」を付ける','sceneDashes',m.sceneDashes!==false)}</div><label>本文<textarea name="text" rows="4" maxlength="4000" required placeholder="例：ミオは返事を待ちながら、窓の外に目をやった。">${esc(m.text)}</textarea></label>${ctx.isNew?pick('挿入位置','anchor',storyAnchors(),ctx.anchor||''):''}<p>文章はセリフの吹き出しとは別に表示されます。</p>${errorLine()}${btns((ctx.isNew?'':act('story-delete','削除','danger'))+act('close','キャンセル')+submit(ctx.isNew?'追加する':'変更を保存'))}</form>`;break;
+  html=`<form data-form="story"><label>文章の表示スタイル<select name="style" aria-describedby="story-style-help">${[['narration','地の文（左揃え）'],['thought','斜体'],['scene','センタリング（中央揃え）']].map(([key,label])=>opt(key,label,m.style)).join('')}</select></label><ul class="story-style-help" id="story-style-help"><li><b>地の文</b>：左揃えで、動作や情景の説明に。</li><li><b>斜体</b>：入力した文章だけを斜めに表示します。名前や記号は付きません。</li><li><b>センタリング</b>：文章を中央に揃えます。両側の「—」はオン・オフできます。</li></ul><div data-story-scene ${m.style==='scene'?'':'hidden'}>${check('両側に「—」を付ける','sceneDashes',m.sceneDashes!==false)}</div><label>本文<textarea name="text" rows="4" maxlength="4000" required placeholder="例：ミオは返事を待ちながら、窓の外に目をやった。">${esc(m.text)}</textarea></label>${ctx.isNew?pick('挿入位置','anchor',storyAnchors(),ctx.anchor||''):''}<p>文章はセリフの吹き出しとは別に表示されます。</p>${errorLine()}${ctx.isNew?btns(act('close','キャンセル')+submit('追加する')):editActions(act('story-delete','削除','danger'))}</form>`;break;
  }
- case 'date':html=`<form data-form="date">${field('日付','date',ctx.draft.date,'date','required')}${field('ラベル（任意）','label',ctx.draft.label,'text','maxlength="80" placeholder="未入力なら日付と曜日を表示"')}<p>${ctx.isNew?'チャットの末尾に日付の区切りを追加します。':'ラベルを入れると日付の代わりに表示されます。'}</p>${errorLine()}${btns((ctx.isNew?'':act('date-delete','削除','danger'))+act('close','キャンセル')+submit(ctx.isNew?'日付を追加':'変更を保存'))}</form>`;break;
+ case 'date':html=`<form data-form="date">${field('日付','date',ctx.draft.date,'date','required')}${field('ラベル（任意）','label',ctx.draft.label,'text','maxlength="80" placeholder="未入力なら日付と曜日を表示"')}<p>${ctx.isNew?'チャットの末尾に日付の区切りを追加します。':'ラベルを入れると日付の代わりに表示されます。'}</p>${errorLine()}${ctx.isNew?btns(act('close','キャンセル')+submit('日付を追加')):editActions(act('date-delete','削除','danger'))}</form>`;break;
  case 'message':{
-  const m=ctx.draft,img=ctx.mediaSrc||source(m.asset);html=`<form data-form="message"><p>${avatar(m.avatar,m.name)}　${esc(m.name)}の投稿</p>${act('quote-start','引用して返信','secondary full')}${m.quote?`<div class="message-quote-editor">${quoteHTML(m.quote)}${act('quote-remove','引用を外す','secondary')}</div>`:''}<label>メッセージ<textarea name="text" rows="4">${esc(m.text)}</textarea></label><div class="field-grid">${field('時刻','time',m.time,'time','required')}${field('既読人数（右側のみ・0は非表示）','read',m.read,'number','min="0" step="1" required')}</div><details ${ctx.openImage?'open':''}><summary>画像・スタンプ</summary><div class="detail-body">${img?`<img class="group-preview" src="${esc(img)}" alt="投稿画像プレビュー">`:''}<div class="upload-bar">${fileField('message',img?'画像を差し替え':'画像を選択')}${img?act('message-image-remove','画像を取り除く','danger'):''}</div>${pick('表示スタイル','style',[['auto','通常の画像'],['stamp','スタンプ風']],m.style==='stamp'?'stamp':'auto')}${field('表示幅（48〜320 px）','width',m.width,'number','min="48" max="320" step="1" required')}</div></details>${errorLine()}${btns(act('message-delete','投稿を削除','danger')+act('close','キャンセル')+submit('変更を保存'))}</form>`;break;
+  const m=ctx.draft,img=ctx.mediaSrc||source(m.asset);html=`<form data-form="message"><p>${avatar(m.avatar,m.name)}　${esc(m.name)}の投稿</p>${act('quote-start','引用して返信','secondary full')}${m.quote?`<div class="message-quote-editor">${quoteHTML(m.quote)}${act('quote-remove','引用を外す','secondary')}</div>`:''}<label>メッセージ<textarea name="text" rows="4">${esc(m.text)}</textarea></label><div class="field-grid">${field('時刻','time',m.time,'time','required')}${field('既読人数（右側のみ・0は非表示）','read',m.read,'number','min="0" step="1" required')}</div><details ${ctx.openImage?'open':''}><summary>画像・スタンプ</summary><div class="detail-body">${img?`<img class="group-preview" src="${esc(img)}" alt="投稿画像プレビュー">`:''}<div class="upload-bar">${fileField('message',img?'画像を差し替え':'画像を選択')}${img?act('message-image-remove','画像を取り除く','danger'):''}</div>${pick('表示スタイル','style',[['auto','通常の画像'],['stamp','スタンプ風']],m.style==='stamp'?'stamp':'auto')}${field('表示幅（48〜320 px）','width',m.width,'number','min="48" max="320" step="1" required')}</div></details>${errorLine()}${editActions(act('message-delete','投稿を削除','danger'))}</form>`;break;
  }
  case 'stickers':{html=`<div class="editor-stack"><p>動物スタンプ ${stickerPack.length}種類。選ぶと、送信前に入力欄で確認できます。</p><div class="sticker-grid" aria-label="動物スタンプ">${stickerPack.map(st=>act('sticker-pick',`<img src="${st.src}" alt="" loading="lazy"><span>${esc(st.name)}</span>`,'sticker-choice',`data-id="${st.id}" aria-label="${esc(st.name)}"`)).join('')}</div></div>`;break;}
  case 'attach':html=`<div class="editor-stack"><p>端末からPNG・JPEG・WebPを選択できます。</p>${row('stickers','smile','スタンプ一覧','動物スタンプをまとめて表示','pink')}${row('image-upload','image','画像を選ぶ','テキストと一緒に送ることもできます')}${row('stamp-upload','smile','スタンプとして選ぶ','透過画像を枠なしで表示します','pink')}${pending?act('pending-clear','現在の添付を取り消す','danger'):''}${errorLine()}</div>`;break;
@@ -541,11 +559,59 @@ function drawSheet(keep=false){const pos=body.scrollTop;let html='';
 }
 function syncDraft(){const f=$('form',body);if(!f)return;const vals=new FormData(f),d=ctx.draft;
  if(view==='participant'){['name','side','color','ink','defaultFace'].forEach(k=>d[k]=vals.get(k));d.themeColors=vals.has('themeColors');d.faces.forEach((x,i)=>{x.name=vals.get('faceName-'+i)||'';});}
- if(view==='settings'){['group','header','bg','fit','clock'].forEach(k=>d[k]=vals.get(k));['leftIcons','rightIcons','names','compact','times','read','dates','small','pattern'].forEach(k=>d[k]=vals.has(k));d.size=Number(vals.get('size'));ctx.openBackground=!!$('details',body)?.open;}
+ if(view==='settings'){['group','header','bg','fit','clock'].forEach(k=>d[k]=vals.get(k));['leftIcons','rightIcons','names','compact','times','read','dates','small','pattern'].forEach(k=>d[k]=vals.has(k));d.size=Number(vals.get('size'));ctx.openBackground=!!$('details',body)?.open;ctx.openDisplay=!!$('[data-settings-display]',body)?.open;ctx.openDate=!!$('[data-settings-date]',body)?.open;}
  if(view==='story'){d.style=storyStyle(vals.get('style'));d.text=vals.get('text');d.sceneDashes=vals.has('sceneDashes');if(ctx.isNew)ctx.anchor=vals.get('anchor');}
  if(view==='notice'){d.name=vals.get('name')||'';if(ctx.isNew)ctx.anchor=vals.get('anchor');}
  if(view==='date'){d.date=vals.get('date');d.label=vals.get('label');}
  if(view==='message'){['text','time','style'].forEach(k=>d[k]=vals.get(k));['read','width'].forEach(k=>d[k]=Number(vals.get(k)));ctx.openImage=!!$('details',body)?.open;}
+}
+function reportEdit(problem=''){
+ ctx.autoProblem=problem;const status=$('[data-auto-edit-status]',body);
+ if(status){const text=editStatus();if(status.textContent!==text)status.textContent=text;status.dataset.error=String(!!problem);}
+}
+function saveEdit(sync=true){
+ if(!isAutoEdit())return;
+ const form=$('form',body);if(!form)return;
+ if(sync)syncDraft();
+ const d=clone(ctx.draft),kind=view;
+ if(form.querySelector(':invalid')){reportEdit('入力を確認してください。最後に保存した内容は残っています。');return;}
+ let old=kind==='settings'?state.prefs:kind==='participant'?person(d.id):item(d.id);
+ if(!old)return;
+ let media='';
+ if(kind==='participant'){
+  d.name=d.name.trim();if(!d.name){reportEdit('名前を入力してください。');return;}
+  d.faces=d.faces.filter(f=>f.asset);if(!d.faces.some(f=>f.id===d.defaultFace))d.defaultFace='';
+  d.faces.forEach((f,i)=>{f.name=f.name.trim()||`表情 ${i+1}`;});
+ }else if(kind==='settings'){
+  d.group=d.group.trim();if(!d.group){reportEdit('グループ名を入力してください。');return;}
+  media=ctx.wallSrc;
+ }else if(kind==='story'){
+  d.text=d.text.trim();if(!d.text){reportEdit('本文を入力してください。');return;}
+ }else if(kind==='date')d.label=d.label.trim();
+ else if(kind==='message'){
+  if(!d.text.trim())d.text='';media=ctx.mediaSrc;
+  if(!d.text&&!d.asset&&!media){reportEdit('本文か画像を残してください。投稿ごと消す場合は「投稿を削除」を使えます。');return;}
+ }
+ if(!media&&JSON.stringify(old)===JSON.stringify(d)){reportEdit();return;}
+ // One undo entry for the whole edit, rather than one for every keystroke.
+ if(!ctx.autoRemembered){remember();ctx.autoRemembered=true;}
+ if(kind==='participant'){
+  d.faces.forEach(f=>{if(ctx.uploads[f.asset]){state.assets[f.asset]=ctx.uploads[f.asset];delete ctx.uploads[f.asset];}});
+  state.people=state.people.map(p=>p.id===d.id?d:p);
+  if(state.speaker===d.id&&chosenFace!=='-none-'&&!d.faces.some(f=>f.id===chosenFace))chosenFace='';
+  if(sync){const select=$('select[name="defaultFace"]',form);for(const o of select.options){const face=d.faces.find(f=>f.id===o.value);if(face)o.textContent=face.name;}}
+  change();
+ }else if(kind==='settings'){
+  if(media){ctx.draft.wall=d.wall=storeAsset(media);ctx.wallSrc='';}
+  state.prefs=d;change();
+ }else{
+  if(media){ctx.draft.asset=d.asset=storeAsset(media);ctx.mediaSrc='';}
+  const i=state.items.findIndex(m=>m.id===d.id);state.items[i]=d;
+  const row=[...list.children].find(el=>el.dataset.id===d.id);
+  if(row){const next=row.nextElementSibling;row.outerHTML=messageHTML(d,i);const updated=next?next.previousElementSibling:list.lastElementChild;if(updated?.dataset.id===d.id)measureMessages(updated,state.prefs);}
+  saveSoon();
+ }
+ reportEdit();
 }
 function editPerson(id){const p=person(id);const draft=p?clone(p):{id:nano(),name:'',side:'left',themeColors:true,defaultFace:'',faces:[]};if(draft.themeColors)[draft.color,draft.ink]=themeColors(draft);openSheet('participant',{isNew:!p,uploads:{},draft});}
 function confirm(kind,message){syncDraft();openSheet('confirm',{kind,message,prev:view,old:ctx});}
@@ -615,23 +681,18 @@ function stopReplay(returnFocus=true){
 }
 function commit(){
  if(view==='replay'){const values=new FormData($('form',body));startReplay(values.get('speed'),values.has('quick'));return;}
+ if(isAutoEdit()){saveEdit();return;}
  syncDraft();const d=ctx.draft;let label='';
  if(view==='participant'){
   d.name=d.name.trim();if(!d.name){toast('名前を入力してください。',true);return;}
   remember();d.faces=d.faces.filter(f=>f.asset);if(!d.faces.some(f=>f.id===d.defaultFace))d.defaultFace='';d.faces.forEach((f,i)=>{f.name=f.name.trim()||`表情 ${i+1}`;if(ctx.uploads[f.asset])state.assets[f.asset]=ctx.uploads[f.asset];});
-  if(ctx.isNew)state.people.push(d);else state.people=state.people.map(p=>p.id===d.id?d:p);if(!state.speaker)state.speaker=d.id;if(state.speaker===d.id&&chosenFace!=='-none-'&&!d.faces.some(f=>f.id===chosenFace))chosenFace='';label=ctx.isNew?'参加者を登録しました':'参加者を更新しました';
- }else if(view==='settings'){d.group=d.group.trim();if(!d.group){toast('グループ名を入力してください。',true);return;}remember();if(ctx.wallSrc)d.wall=storeAsset(ctx.wallSrc);state.prefs=d;label='デザインを更新しました';}
- else if(view==='story'){
-  d.text=d.text.trim();if(!d.text){toast('本文を入力してください。',true);return;}
-  remember();if(ctx.isNew){const at=state.items.findIndex(m=>m.id===ctx.anchor);state.items.splice(at<0?state.items.length:at,0,d);}else state.items=state.items.map(x=>x.id===d.id?d:x);
-  label=storyTypes[d.style]+(ctx.isNew?'を追加しました':'を更新しました');
- }
- else if(view==='notice'){
-  remember();if(ctx.isNew){const at=state.items.findIndex(m=>m.id===ctx.anchor);state.items.splice(at<0?state.items.length:at,0,d);}else state.items=state.items.map(x=>x.id===d.id?d:x);
-  label=ctx.isNew?'送信取り消し通知を追加しました':'送信取り消し通知を更新しました';
- }
- else if(view==='date'){remember();d.label=d.label.trim();if(ctx.isNew)state.items.push(d);else state.items=state.items.map(x=>x.id===d.id?d:x);state.prefs.dates=true;label='日付を反映しました';}
- else if(view==='message'){if(!d.text.trim())d.text='';if(!d.text&&!d.asset&&!ctx.mediaSrc){toast('本文または画像を残すか、投稿自体を削除してください。',true);return;}remember();if(ctx.mediaSrc)d.asset=storeAsset(ctx.mediaSrc);state.items=state.items.map(x=>x.id===d.id?d:x);label='投稿を更新しました';}
+  state.people.push(d);if(!state.speaker)state.speaker=d.id;label='参加者を登録しました';
+ }else if(view==='story'||view==='notice'){
+  if(view==='story'){d.text=d.text.trim();if(!d.text){toast('本文を入力してください。',true);return;}}
+  remember();const at=state.items.findIndex(m=>m.id===ctx.anchor);state.items.splice(at<0?state.items.length:at,0,d);
+  label=(view==='story'?storyTypes[d.style]:'送信取り消し通知')+'を追加しました';
+ }else if(view==='date'){remember();d.label=d.label.trim();state.items.push(d);state.prefs.dates=true;label='日付を反映しました';}
+ else return;
  const back=ctx.returnTo,inserted=ctx.isNew&&(view==='story'||view==='notice'),scroll=ctx.isNew&&(view==='date'||(inserted&&!ctx.anchor));
  if(back==='timeline'){change(label,scroll);openSheet('timeline',{focusId:d.id});return;}
  closeSheet();change(label,scroll);if(inserted&&!scroll)requestAnimationFrame(()=>[...list.children].find(el=>el.dataset.id===d.id)?.scrollIntoView({block:'nearest'}));
@@ -652,7 +713,7 @@ function onAction(b){const a=b.dataset.action,id=b.dataset.id;
  case 'stickers':openSheet(a);break;
  case 'sticker-pick':{const st=stickerPack.find(x=>x.id===id);if(st){pendingSequence++;pendingBusy=false;pending={src:st.src,style:'stamp',stickerId:st.id};closeSheet();renderComposer();}break;}
  case 'starter-pick':{const name=$('input[name=workName]',body).value.trim();openSheet('confirm',{kind:'starter',count:Number(id),name,prev:'starter',old:{name},message:id+'人の新しい作品を作りますか？ 今編集中の作品は残ります。'});break;}
- case 'close':if(ctx?.returnTo==='timeline')openSheet('timeline',{focusId:ctx.isNew?'':ctx.draft.id});else closeSheet();break;
+ case 'close':if(ctx?.returnTo==='timeline')openSheet('timeline',{focusId:ctx.isNew?'':ctx.draft.id});else if(view==='date'&&ctx.parentSettings){openSheet('settings',ctx.parentSettings);$('[data-action="date-add"]',body)?.focus();}else closeSheet();break;
  case 'speaker':case 'faces':openSheet(a,{pid:state.speaker,face:chosenFace});break;
  case 'choose-person':{const y=$('.speaker-list',body)?.scrollTop||0;if(ctx.pid!==id){ctx.pid=id;ctx.face='';}drawSheet(true);$('.speaker-list',body).scrollTop=y;break;}
  case 'select-face':ctx.face=id;setSpeaker();break;
@@ -660,15 +721,15 @@ function onAction(b){const a=b.dataset.action,id=b.dataset.id;
  case 'participant-new':editPerson();break;
  case 'participant-edit':editPerson(id);break;
  case 'face-new':{syncDraft();const f={id:nano(),name:'',asset:''};ctx.draft.faces.push(f);drawSheet(true);body.querySelector('input[name="faceName-'+(ctx.draft.faces.length-1)+'"]')?.scrollIntoView({block:'nearest'});break;}
- case 'face-delete':syncDraft();ctx.draft.faces=ctx.draft.faces.filter(f=>f.id!==id);if(ctx.draft.defaultFace===id)ctx.draft.defaultFace='';drawSheet(true);break;
- case 'stock':{syncDraft();const f=ctx.draft.faces.find(f=>f.id===id);if(f){const had=ctx.draft.faces.some(x=>x.asset);f.asset=b.dataset.stock;if(!had)ctx.draft.defaultFace=f.id;}drawSheet(true);break;}
- case 'preset':$('input[name="color"]',body).value=b.dataset.color;$('input[name="themeColors"]',body).checked=false;break;
+ case 'face-delete':syncDraft();ctx.draft.faces=ctx.draft.faces.filter(f=>f.id!==id);if(ctx.draft.defaultFace===id)ctx.draft.defaultFace='';saveEdit(false);drawSheet(true);break;
+ case 'stock':{syncDraft();const f=ctx.draft.faces.find(f=>f.id===id);if(f){const had=ctx.draft.faces.some(x=>x.asset);f.asset=b.dataset.stock;if(!had)ctx.draft.defaultFace=f.id;saveEdit(false);}drawSheet(true);break;}
+ case 'preset':$('input[name="color"]',body).value=b.dataset.color;$('input[name="themeColors"]',body).checked=false;saveEdit();break;
  case 'theme':{const key=b.dataset.themeChoice;if(!themes[key])break;
-  if(view==='settings'&&dialog.open){syncDraft();applyTheme(ctx.draft,key);drawSheet(true);}else{remember();applyTheme(state.prefs,key);if(dialog.open)closeSheet();change(themes[key].label+'に切り替えました');}break;}
+  if(view==='settings'&&dialog.open){syncDraft();applyTheme(ctx.draft,key);saveEdit(false);drawSheet(true);}else{remember();applyTheme(state.prefs,key);if(dialog.open)closeSheet();change(themes[key].label+'に切り替えました');}break;}
 
  case 'participant-delete':confirm('participant','この参加者を削除しますか？ 送信済みのメッセージは、当時の名前やアイコンのまま残ります。');break;
  case 'settings':openSheet(a,{draft:clone(state.prefs),wallSrc:''});break;
- case 'wall-remove':syncDraft();ctx.draft.wall='';ctx.wallSrc='';ctx.openBackground=true;drawSheet(true);break;
+ case 'wall-remove':syncDraft();ctx.draft.wall='';ctx.wallSrc='';ctx.openBackground=true;saveEdit(false);drawSheet(true);break;
  case 'notice-add':openSheet('notice',{draft:{id:nano(),type:'notice',name:person(state.speaker)?.name||''},isNew:true,anchor:'',returnTo:'timeline'});break;
  case 'notice-edit':if(item(id)?.type==='notice')openSheet('notice',{draft:clone(item(id))});break;
  case 'notice-delete':confirm('item','この送信取り消し通知を削除しますか？');break;
@@ -683,15 +744,15 @@ function onAction(b){const a=b.dataset.action,id=b.dataset.id;
  }
  case 'story-edit':if(item(id))openSheet('story',{draft:clone(item(id))});break;
  case 'story-delete':confirm('item','この文章を削除しますか？');break;
- case 'date-add':openSheet('date',{draft:{id:nano(),type:'date',date:dayNow(),label:''},isNew:true});break;
+ case 'date-add':{const parentSettings=view==='settings'?ctx:null;if(parentSettings)syncDraft();openSheet('date',{draft:{id:nano(),type:'date',date:dayNow(),label:''},isNew:true,parentSettings});break;}
  case 'date-edit':if(item(id))openSheet('date',{draft:clone(item(id))});break;
  case 'date-delete':confirm('item','この日付区切りを削除しますか？');break;
  case 'message':if(item(id))openSheet('message',{draft:clone(item(id)),mediaSrc:''});break;
  case 'quote-start':{const m=item(ctx?.draft?.id);if(m?.type==='msg'){pendingQuote=quoteFor(m);closeSheet();renderComposer();input.focus();scrollToEnd();}break;}
  case 'quote-clear':pendingQuote=null;renderComposer();input.focus();break;
- case 'quote-remove':syncDraft();delete ctx.draft.quote;drawSheet(true);break;
+ case 'quote-remove':syncDraft();delete ctx.draft.quote;saveEdit(false);drawSheet(true);break;
  case 'message-delete':confirm('item','この投稿を削除しますか？');break;
- case 'message-image-remove':syncDraft();ctx.draft.asset='';ctx.mediaSrc='';ctx.openImage=true;drawSheet(true);break;
+ case 'message-image-remove':syncDraft();if(!ctx.draft.text.trim()){reportEdit('画像を外すには本文を入れてください。投稿ごと消す場合は「投稿を削除」を使えます。');break;}ctx.draft.asset='';ctx.mediaSrc='';ctx.openImage=true;saveEdit(false);drawSheet(true);break;
  case 'reset':confirm('reset','この作品の会話・参加者・画像・設定を消去します。ほかの作品は残ります。この操作は元に戻せません。');break;
  case 'reset-demo':case 'confirm-yes':{
    const k=ctx.kind;
@@ -750,12 +811,16 @@ body.addEventListener('change',async e=>{
    const [col,ink]=themeColors({side:$('select[name="side"]',body).value});$('input[name="color"]',body).value=col;$('input[name="ink"]',body).value=ink;
   }
  }
- const mode=t.dataset.upload;if(!mode||!t.files?.[0])return;const file=t.files[0], current=ctx;syncDraft();const form=$('form',body);form.inert=true;const line=$('[data-inline-error]',form);line.textContent='画像を読み込み中…';
+ const mode=t.dataset.upload;if(!mode||!t.files?.[0]){if(t.form?.dataset.form===view)saveEdit();return;}const file=t.files[0], current=ctx;syncDraft();const form=$('form',body);form.inert=true;const line=$('[data-inline-error]',form);line.textContent='画像を読み込み中…';
  try{const src=await processImage(file,mode==='face'?400:mode==='wall'?1720:1500);if(!dialog.open||current!==ctx)return;
   if(mode==='face'){const face=ctx.draft.faces.find(f=>f.id===t.dataset.id);if(!face)return;const had=ctx.draft.faces.some(x=>x.asset);const id=nano();ctx.uploads[id]=src;face.asset=id;if(!had)ctx.draft.defaultFace=face.id;}
-  if(mode==='wall'){ctx.wallSrc=src;ctx.openBackground=true;}if(mode==='message'){ctx.mediaSrc=src;ctx.openImage=true;}drawSheet(true);
+  if(mode==='wall'){ctx.wallSrc=src;ctx.openBackground=true;}if(mode==='message'){ctx.mediaSrc=src;ctx.openImage=true;}saveEdit(false);drawSheet(true);
  }catch(err){if(current===ctx&&dialog.open){t.value='';toast(err.message||'画像の読み込みに失敗しました。',true);}}finally{form.inert=false;}
 });
+body.addEventListener('input',e=>{
+ const t=e.target;if(!e.isComposing&&t.form?.dataset.form===view&&t.matches('textarea,input[type="text"],input[type="number"],input[type="date"],input[type="time"]'))saveEdit();
+});
+body.addEventListener('compositionend',e=>{if(e.target.form?.dataset.form===view)saveEdit();});
 chat.addEventListener('click',()=>{if(replay?.mode==='manual')showReplayNext(replay);});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b&&!b.disabled)onAction(b);});
 body.addEventListener('submit',e=>{e.preventDefault();commit();});
@@ -1113,5 +1178,5 @@ body.addEventListener('change',async e=>{
 const initialSignature=JSON.stringify(state);paintIcons();render(true);viewport();initStorage();
 
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5d89f11ff4f0a3a',t:'MTc5NTE4OTk0Mg=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5d89f11ff4f0a3a',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5d8d076bfdd19d8',t:'MTc5NTE5MTk2NQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5d8d076bfdd19d8',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
